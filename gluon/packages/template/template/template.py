@@ -26,8 +26,11 @@ if PY2:
     def to_native(obj, charset='utf8', errors='strict'):
         return obj if isinstance(obj, str) else obj.encode(charset, errors)
 
+    from cgi import escape as escapehtml
+
 else:
     from io import StringIO, BytesIO
+    from html import escape as escapehtml
     basestring = str
     unicodeT = str
 
@@ -54,9 +57,8 @@ except ImportError:
     # do not have web2py
     current = None
 
-    def RestrictedError(a, b, c):
-        logging.error(str(a) + ':' + str(b) + ':' + str(c))
-        return RuntimeError
+    class RestrictedError(RuntimeError):
+        pass
 
 
 class Node(object):
@@ -820,11 +822,15 @@ class DummyResponse():
             self.body.write(data.xml())
         else:
             # make it a string
-            if not isinstance(data, (str, unicodeT)):
-                data = str(data)
-            elif isinstance(data, unicodeT):
-                data = data.encode('utf8', 'xmlcharrefreplace')
-            data = cgi.escape(data, True).replace("'", "&#x27;")
+            if PY2:
+                if not isinstance(data, (str, unicodeT)):
+                    data = str(data)
+                elif isinstance(data, unicodeT):
+                    data = data.encode('utf8', 'xmlcharrefreplace')
+            else:
+                if not isinstance(data, str):
+                    data = str(data)
+            data = escapehtml(data, True).replace("'", "&#x27;")
             self.body.write(data)
 
 
